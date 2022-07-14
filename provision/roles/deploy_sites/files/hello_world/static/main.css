@@ -1,0 +1,27 @@
+.text {
+	font-family: 'Roboto Slab', serif;
+	vertical-align: middle;
+	top: 1000px;
+	text-align: center;
+	color: #ebdd60;
+	font-size: 1200%;
+}
+.container {
+	    justify-content: center;
+	    display: flex;
+	    flex-direction: row;
+}
+table{
+	border-collapse: collapse;
+	border: 2px #9e3964;
+	width: 300px;
+	margin: 20px;
+	background-color: #ebdd60;
+}
+th, td {
+	border-width: 3px;
+	border-style: dashed;
+	border-color: #c9bc3e;
+	text-align: center;
+	font-family: 'Roboto Slab', serif;
+}

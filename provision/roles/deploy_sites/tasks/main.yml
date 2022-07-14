@@ -1,0 +1,107 @@
+---
+# tasks file for deploy_sites
+- name: Install requared instruments
+  apt:
+    state: latest
+    name:
+    - apache2
+    - virtualenv
+    - libapache2-mod-wsgi
+    - python3-pip
+    
+- name: Copy hello_world dir
+  copy:
+    src: "hello_world/"
+    dest: "/local/scripts/hello_world/"
+
+- name: Configure apache2.conf
+  blockinfile:
+    path: "/etc/apache2/apache2.conf"
+    block: |
+        ServerName web.test.net
+        
+- name: Generate an OpenSSL private key
+  community.crypto.openssl_privatekey:
+    path: /etc/ssl/private/test.net.pem
+
+- name: Generate an OpenSSL Certificate Signing Request
+  community.crypto.openssl_csr:
+    path: /etc/ssl/test.net.csr
+    privatekey_path: /etc/ssl/private/test.net.pem
+    common_name: web.test.net
+
+- name: Generate a Self Signed OpenSSL certificate
+  community.crypto.x509_certificate:
+    path: /etc/ssl/certs/test.net.crt
+    privatekey_path: /etc/ssl/private/test.net.pem
+    csr_path: /etc/ssl/test.net.csr
+    provider: selfsigned
+        
+- name: Copy virtial hosts files
+  copy:
+    src: "test.net.conf"
+    dest: "/etc/apache2/sites-available/"
+
+- name: Enable the Apache2 module wsgi, ssl, alias and enable test.net
+  shell: "{{ item }}"
+  loop: 
+    - a2enmod wsgi
+    - a2enmod ssl
+    - a2enmod alias
+    - a2ensite test.net.conf
+  notify: Restart Apache2
+
+- name: Create flask app env
+  shell: cd /local/scripts/hello_world/ && virtualenv venv
+
+- name: Activate flask app env
+  shell: cd /local/scripts/hello_world/ && . venv/bin/activate
+
+- name: Install python packages
+  become: no
+  pip:
+    name: 
+    - Flask
+    - pymysql
+
+- name: Copy index.html to /var/www/html/
+  copy:
+    src: /local/scripts/hello_world/templates/index.html
+    dest: /var/www/html/
+    remote_src: yes
+
+- name: Copy css files
+  copy:
+    src: /local/scripts/hello_world/static/
+    dest: /var/www/html/static
+    remote_src: yes
+
+- name:  Change priveleges of hello_world
+  file: 
+    path: "{{ item }}"
+    mode: '666'
+  loop:
+    - /local/scripts/hello_world/hello_world.py
+    - /var/www/html/index.html
+
+- name: Delete 000-default.conf
+  file:
+    path: "/etc/apache2/sites-available/000-default.conf"
+    state: absent
+
+- name: Make site2 directory
+  file:
+    path: /var/www/html/site2
+    state: directory
+
+- name: Copy index.html to /var/www/html/site2
+  copy:
+    src: /local/scripts/hello_world/templates/index.html
+    dest: /var/www/html/site2/index.html
+    remote_src: yes
+
+- name: Add hello-world script to crontab
+  cron:
+    name: "Run hello-world script"
+    job: "cd /local/scripts/hello_world && export FLASK_APP=hello_world.py && /home/vagrant/.local/bin/flask hello-world"
+  become: no

@@ -1,0 +1,63 @@
+---
+# tasks file for DNS_configuration
+- name: Install requared instruments
+  apt:
+    name:
+    - bind9
+    - resolvconf
+    - isc-dhcp-server
+    state: latest
+    update_cache: yes
+
+- name: Enable ip forwarding
+  copy:
+    content: "net.ipv4.ip_forward = 1"
+    dest: /etc/sysctl.conf
+
+- name: Copy files of zone
+  copy:
+    src: "{{ item }}"
+    dest: /var/lib/bind
+  loop:
+    - "forward.db"
+    - "reverse.db"
+
+- name: Copy bind config files
+  copy:
+    src: "{{ item }}"
+    dest: /etc/bind
+  loop:
+    - "named.conf.local"
+    - "named.conf.options"
+
+- name: Update resolved.conf
+  lineinfile:
+    path: /etc/systemd/resolved.conf
+    regexp: "^DNS=$"
+    line: "DNS=192.168.11.57"
+
+- name: Update resolv.conf/head
+  lineinfile:
+    path: /etc/resolvconf/resolv.conf.d/head
+    line: "nameserver 192.168.11.57"
+
+- name: Copy dhcpd.conf
+  copy:
+    src: "dhcpd.conf"
+    dest: /etc/dhcp/ 
+
+- name: Update isc-dhcp-server
+  lineinfile:
+    path: /etc/default/isc-dhcp-server
+    regexp: '^INTERFACESv4=""'
+    line: 'INTERFACESv4="enp0s8 enp0s9"'
+        
+- name: Restart systemd-resolved, named, isc-dhcp-server services
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+    enabled: yes
+  loop:
+    - named
+    - systemd-resolved
+    - isc-dhcp-server

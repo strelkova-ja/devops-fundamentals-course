@@ -1,0 +1,38 @@
+---
+- name: Start database configuration
+  hosts: db
+  become: yes
+
+  vars:
+    files_dest: "/home/julia/Desktop/epam_task/provision/files/"
+    
+  roles:
+    - zabbix_configuration
+    - MySQL_configuration
+
+  tasks:
+  - name: Install requared instruments
+    apt:
+      state: latest
+      name:
+        - mdadm
+        - mutt
+        - postfix
+
+  - name: Create LVM and RAID1
+    include: disks_setup.yaml
+
+  - name: Copy scripts
+    copy: 
+      src: "{{ item }}"
+      dest: /home/vagrant
+    loop:
+      - "{{ files_dest }}script2.sh"
+      - "{{ files_dest }}conf_script2.cfg"
+      - "{{ files_dest }}script1.sh"
+
+  - name: Add script2 to cron
+    cron:
+      name: "script2"
+      special_time: reboot
+      job: "/home/vagrant/script2.sh"

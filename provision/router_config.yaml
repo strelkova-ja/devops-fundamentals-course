@@ -1,0 +1,10 @@
+---
+
+- name: Start Configuration
+  hosts: router
+  become: yes
+
+  roles:
+    - DDNS_configuration
+    - UFW_configuration  
+    - zabbix_configuration

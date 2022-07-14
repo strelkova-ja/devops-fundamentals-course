@@ -1,0 +1,40 @@
+---
+# tasks file for UFW_configuration
+- name: Deny everything and enable UFW
+  community.general.ufw:
+    state: enabled
+    policy: allow
+    direction: routed
+    route: yes
+    logging: 'on'
+
+- name: Allow used ports 192.168.12.0
+  community.general.ufw:
+    rule: allow
+    port: '{{ item }}'
+    src: 192.168.12.0/24
+  loop:
+    - '3000'
+    - '80'
+    - '443'
+    - '3306'
+    - '10050'
+    - '53'
+
+- name: Allow used ports 192.168.11.0
+  community.general.ufw:
+    rule: allow
+    port: '{{ item }}'
+    src: 192.168.11.0/24
+  loop:
+    - '3000'
+    - '80'
+    - '443'
+    - '3306'
+    - '10050'
+    - '53'
+
+- name: Allow ssh to the host
+  community.general.ufw:
+    rule: allow
+    name: OpenSSH

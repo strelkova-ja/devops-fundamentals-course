@@ -1,0 +1,94 @@
+---
+# tasks file for zabbix_configuration
+- name: Download repository for Zabbix
+  get_url:
+    url: https://repo.zabbix.com/zabbix/5.4/ubuntu/pool/main/z/zabbix-release/zabbix-release_5.4-1+ubuntu20.04_all.deb
+    dest: /home/vagrant
+
+- name: Install repository for Zabbix    
+  apt:
+    deb: zabbix-release_5.4-1+ubuntu20.04_all.deb
+    update_cache: yes
+
+- name: Delete temporary files
+  file:
+    dest: /home/vagrant/zabbix-release_5.4-1+ubuntu20.04_all.deb
+    state: absent
+
+- name: Install zabbix-agent
+  apt:
+    name: zabbix-agent
+    state: latest
+
+- name: Start & enable service zabbix-agent
+  systemd:
+    name: zabbix-agent
+    state: started
+    enabled: yes
+
+- name: Change zabbix-agent configuration
+  lineinfile:
+    path: /etc/zabbix/zabbix_agentd.conf
+    regexp: '^ServerActive=127\.0\.0\.1$'
+    line: ServerActive=web.test.net
+  notify: Restart zabbix-agent    
+  when: ansible_nodename != 'web'  
+
+- name: Change zabbix-agent configuration part 2
+  lineinfile:
+    path: /etc/zabbix/zabbix_agentd.conf
+    regexp: '^Server=127\.0\.0\.1$'
+    line: Server=web.test.net
+  notify: Restart zabbix-agent
+  when: ansible_nodename != 'web'
+
+- block: #Zabbix config for web
+
+  - name: Install zabbix-server
+    apt:
+      state: latest
+      update_cache: yes
+      name:
+        - zabbix-server-mysql
+        - zabbix-frontend-php
+        - zabbix-apache-conf
+        - zabbix-sql-scripts
+
+  - name: Install PyMySQL and zabbix-api as root
+    pip:
+      name: 
+        - pymysql
+        - zabbix-api
+
+  - name: Change zabbix-server configuration
+    copy:
+      src: zabbix_server.conf
+      dest: /etc/zabbix/zabbix_server.conf
+    notify: Restart zabbix-server
+
+  - name: Check that create.sql.gz exists
+    shell: ls -la /usr/share/doc/zabbix-sql-scripts/mysql/
+    register: result
+
+  - name: Extract zabbix db
+    shell: gunzip /usr/share/doc/zabbix-sql-scripts/mysql/create.sql.gz
+    when: "'create.sql.gz' in result.stdout"
+   
+  - name: Import zabbix database
+    community.mysql.mysql_db:
+      name: zabbix
+      state: import
+      target: /usr/share/doc/zabbix-sql-scripts/mysql/create.sql
+      login_host: db.test.net
+      login_user: zabbix
+      login_password: "{{ password }}"
+    when: "'create.sql.gz' in result.stdout"
+
+  - name: Start & enable service zabbix-server
+    systemd:
+      name: zabbix-server
+      state: started
+      enabled: yes
+    
+  when: ansible_nodename == 'web'
+    

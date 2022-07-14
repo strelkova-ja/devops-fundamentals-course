@@ -1,0 +1,16 @@
+key "dhcp-update" {
+        algorithm hmac-sha256;
+        secret "Tsmye34bueLRbYWeIVHKIfq93qnPCa6t1/tWk8iKxv8=";
+};
+
+zone "test.net" {
+    type master;
+    file "/var/lib/bind/forward.db";
+    allow-update { key dhcp-update; };
+};
+ 
+zone "168.192.in-addr.arpa" {
+    type master;
+    file "/var/lib/bind/reverse.db";
+    allow-update { key dhcp-update; };
+};

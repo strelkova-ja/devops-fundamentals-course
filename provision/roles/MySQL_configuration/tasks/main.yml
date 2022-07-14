@@ -1,0 +1,73 @@
+---
+# tasks file for MySQL_configuration
+- name: Install requared instruments
+  apt:
+    state: latest
+    name:
+        - mysql-server
+        - mysql-client
+        - python3-pymysql
+        
+- name: Set password for root user
+  mysql_user:
+    name: "root"
+    password: "Qwerty58"
+    priv: '*.*:ALL,GRANT'
+    host: 'localhost'
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    state: present
+
+- name: Copy .my.cnf
+  copy:
+    src: "my.cnf"
+    dest: /root/.my.cnf
+    owner: root
+    mode: '600'
+
+- name: Create a new database 'Articles_DB'
+  community.mysql.mysql_db:
+    name: Articles_DB
+    state: present
+
+- name: Copy database dump file
+  copy:
+    src: "db_backup"
+    dest: /home/vagrant/
+
+- name: Restore database
+  community.mysql.mysql_db:
+    name: Articles_DB
+    state: import
+    target: /home/vagrant/db_backup
+
+- name: Create database for Zabbix
+  community.mysql.mysql_db:
+    name: zabbix
+    state: present
+    encoding: utf8
+    collation: utf8_bin
+
+- name: Create database user for web
+  community.mysql.mysql_user:
+    name: web
+    password: "{{ password }}"
+    host: '%'
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    priv: 'Articles_DB.*:ALL'
+    state: present
+    
+- name: Create database user for zabbix
+  community.mysql.mysql_user:
+    name: zabbix
+    password: "{{ password }}"
+    host: '%'
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    priv: 'zabbix.*:ALL'
+    state: present    
+
+- name: Bind address
+  ansible.builtin.lineinfile:
+    path: /etc/mysql/mysql.conf.d/mysqld.cnf 
+    regexp: '^bind-address  ='
+    line: bind-address = 0.0.0.0
+  notify: Restart MySQL

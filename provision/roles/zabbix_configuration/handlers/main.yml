@@ -1,0 +1,11 @@
+---
+# handlers file for zabbix_configuration
+- name: Restart zabbix-agent  
+  systemd:
+    name: zabbix-agent
+    state: restarted
+    
+- name: Restart zabbix-server  
+  systemd:
+    name: zabbix-server
+    state: restarted

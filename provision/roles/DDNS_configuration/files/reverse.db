@@ -1,0 +1,13 @@
+@               IN      SOA router.test.net. admin.test.net. (
+                                3           ; Serial
+                                604800      ; Refresh
+                                86400       ; Retry
+                                2419200     ; Expire
+                                3600  )     ; Minimum
+                    
+                    
+                    
+;name servers - NS records
+                IN      NS      router.test.net.
+                
+57.11           IN      PTR     router.test.net.

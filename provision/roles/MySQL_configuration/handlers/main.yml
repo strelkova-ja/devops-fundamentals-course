@@ -1,0 +1,6 @@
+---
+# handlers file for MySQL_configuration
+- name: Restart MySQL
+  systemd:
+    name: mysql
+    state: restarted

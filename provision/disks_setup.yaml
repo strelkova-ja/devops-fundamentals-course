@@ -1,0 +1,40 @@
+---
+- name: Create a volume group
+  community.general.lvg:
+    vg: lv_1
+    pvs: /dev/sdc,/dev/sdd
+    pvresize: yes
+
+- name: Create a logic volume 
+  community.general.lvol:
+    vg: lv_1
+    lv: test
+    size: 100%FREE
+    pvs: /dev/sdc,/dev/sdd
+
+- name: Make filesystem
+  filesystem:
+    dev: /dev/lv_1/test
+    fstype: ext4
+
+- name: Mount /local/files
+  mount:
+    path: /local/files
+    src: /dev/lv_1/test
+    state: mounted
+    fstype: ext4
+
+- name: Create RAID 
+  shell: mdadm --create /dev/md0 --level=1 --raid-devices=2 /dev/sdf /dev/sde --metadata=0.90
+
+- name: Make filesystem
+  filesystem:
+    dev: /dev/md0
+    fstype: ext4
+
+- name: Mount /local/backups
+  mount:
+    path: /local/backups
+    src: /dev/md0
+    state: mounted
+    fstype: ext4

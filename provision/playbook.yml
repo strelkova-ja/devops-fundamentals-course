@@ -1,0 +1,59 @@
+---
+- name: Common Settings
+  hosts: all 
+  become: yes
+
+  vars:
+    url_headers_all: "https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.16.12/amd64/linux-headers-5.16.12-051612_5.16.12-051612.202203021142_all.deb"
+    url_modules_gen: "https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.16.12/amd64/linux-modules-5.16.12-051612-generic_5.16.12-051612.202203021142_amd64.deb"
+    url_image_gen: "https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.16.12/amd64/linux-image-unsigned-5.16.12-051612-generic_5.16.12-051612.202203021142_amd64.deb "
+
+  tasks:
+  - name: Download linux_headers_all
+    get_url: 
+      url: "{{ item }}"
+      dest: /home/vagrant
+    loop:
+      - "{{ url_headers_all }}"
+      - "{{ url_modules_gen }}"
+      - "{{ url_image_gen }}"
+
+  - name: Install Kernel
+    shell: dpkg -i linux*.deb
+
+  - name: Update & Upgrade
+    apt:
+      update_cache: yes
+      upgrade: yes
+
+  - name: Set local time zone
+    shell: timedatectl set-timezone 'Europe/Moscow'    
+
+  - block: #SSH configuration for db and web  
+    - name: Copy ssh config
+      copy:
+        src: "/home/julia/Desktop/epam_task/provision/files/.ssh"
+        dest: /home/vagrant/
+        owner: vagrant
+        group: vagrant
+        mode: "700"
+    
+    - name: Insert authorized_keys
+      blockinfile:
+        block: "{{ lookup('file', './files/authorized_keys_db_web') }}"
+        path: /home/vagrant/.ssh/authorized_keys
+    when: ansible_nodename != "router"
+
+  - block: #SSH config for router
+    - name: Copy sshd_config
+      copy:
+        src: "./files/sshd_config"
+        dest: /etc/ssh
+       # validate: sshd -t
+
+    - name: Insert authorized_keys
+      blockinfile:
+        block: "{{ lookup('file', './files/authorized_keys') }}"
+        path: /home/vagrant/.ssh/authorized_keys
+    when: ansible_nodename == "router"
+
